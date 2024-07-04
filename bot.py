@@ -108,7 +108,7 @@ async def process_message(message: types.Message):
             save_admin_messages()
     elif message.from_user.username in admins:
         try:
-            if "ОТВЕЧЕНО" in message.reply_to_message.text:
+            if "НЕ ОТВЕЧЕНО" not in message.reply_to_message.text:
                     await message.answer("На это сообщение уже ответили")    
             elif "ID обращения:" in message.reply_to_message.text:
                 parts = message.reply_to_message.text.split("ID обращения:")
