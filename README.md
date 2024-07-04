@@ -1,2 +1,2 @@
 # cis
- bot for communication
+ bot for communication using aiogram3
