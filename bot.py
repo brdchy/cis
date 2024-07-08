@@ -17,6 +17,21 @@ users_data = {}
 admins = set()
 admin_messages = {}
 
+programs_dict = {
+    '1':'Прикладная информатика',
+    '2':'Не прикладная информатика'
+}
+
+def get_keyboard():
+    buttons = [
+        [
+            types.InlineKeyboardButton(text="Направление 1", callback_data="program_1"),
+            types.InlineKeyboardButton(text="Направление 2", callback_data="program_2")
+        ]
+    ]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=buttons)
+    return keyboard
+
 def load_users_data():
     if os.path.exists('users.csv'):
         with open('users.csv', mode='r', encoding='utf-8') as file:
@@ -28,7 +43,7 @@ def load_users_data():
 
 def save_users_data():
     with open('users.csv', mode='w', encoding='utf-8', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=['username', 'user_id', 'role'])
+        writer = csv.DictWriter(file, fieldnames=['username', 'user_id', 'role','program'])
         writer.writeheader()
         for data in users_data.values():
             writer.writerow(data)
@@ -60,14 +75,22 @@ def save_admin_messages():
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    if message.from_user.username not in users_data:
-        users_data[message.from_user.username] = {
-            'username': message.from_user.username,
-            'user_id': str(message.from_user.id),
-            'role': 'user'
+    await message.answer(f"Привет! Я ваш бот.\nПожалуйста, выберите вашу образовательную программу.", reply_markup=get_keyboard())
+
+@dp.callback_query(F.data.startswith("program_"))
+async def callback_program(callback: types.CallbackQuery):
+    user_program = callback.data.split("_")[1]
+    if callback.from_user.username not in users_data:
+        users_data[callback.from_user.username] = {
+            'username': callback.from_user.username,
+            'user_id': str(callback.from_user.id),
+            'role': 'user',
+            'program':user_program
         }
         save_users_data()
-    await message.answer(f"Привет! Я ваш бот.")
+
+    await callback.answer()
+    await callback.message.edit_reply_markup(reply_markup=None)
 
 @dp.message(Command("add_admin"))
 async def add_admin(message: types.Message):
@@ -94,7 +117,7 @@ async def process_message(message: types.Message):
         text = message.text
 
         for admin_username in admins:
-            sent_message = await bot.send_message(users_data[admin_username]['user_id'], f"❌НЕ ОТВЕЧЕНО❌\n@{username}\n{text}\n\nID обращения: {message.message_id}")
+            sent_message = await bot.send_message(users_data[admin_username]['user_id'], f"❌НЕ ОТВЕЧЕНО❌\n@{username}\nОбразовательная программа: {programs_dict[users_data[username]['program']]}\n{text}\n\nID обращения: {message.message_id}")
             if message.message_id not in admin_messages:
                 admin_messages[message.message_id] = {
                     'username': username,
@@ -125,7 +148,7 @@ async def process_message(message: types.Message):
                             if original_message['status'] != 'ОТВЕЧЕНО':
                                 original_message['status'] = 'ОТВЕЧЕНО'
                                 for admin_username, admin_message_id in original_message['admin_message_ids'].items():
-                                    await bot.edit_message_text(chat_id=users_data[admin_username]['user_id'], message_id=admin_message_id, text=f"✅ОТВЕЧЕНО✅\n@{username}\n{original_text}\n\nОтвет администратора:\n{reply_text}")
+                                    await bot.edit_message_text(chat_id=users_data[admin_username]['user_id'], message_id=admin_message_id, text=f"✅ОТВЕЧЕНО✅\n@{username}\nОбразовательная программа: {programs_dict[users_data[username]['program']]}\n{original_text}\n\nОтвет администратора:\n{reply_text}")
                                 del admin_messages[original_message_id]
                         else:
                             await message.answer("Сообщение не найдено.")
@@ -152,7 +175,7 @@ async def process_message(message: types.Message):
                                         await bot.edit_message_caption(
                                             chat_id=users_data[admin_username]['user_id'],
                                             message_id=admin_message_id,
-                                            caption=f"✅ОТВЕЧЕНО✅\n@{username}\n{original_caption}\n\nОтвет администратора:\n{reply_text}"
+                                            caption=f"✅ОТВЕЧЕНО✅\n@{username}\nОбразовательная программа: {programs_dict[users_data[username]['program']]}\n{original_caption}\n\nОтвет администратора:\n{reply_text}"
                                         )
                                     del admin_messages[original_message_id]
                             else:
@@ -172,7 +195,7 @@ async def process_photo_message(message: types.Message):
             sent_message = await bot.send_photo(
                 users_data[admin_username]['user_id'],
                 photo=message.photo[-1].file_id,
-                caption=f"❌НЕ ОТВЕЧЕНО❌\n@{username}\n{caption}\n\nID обращения: {message.message_id}",
+                caption=f"❌НЕ ОТВЕЧЕНО❌\n@{username}\nОбразовательная программа: {programs_dict[users_data[username]['program']]}\n{caption}\n\nID обращения: {message.message_id}",
                 parse_mode=ParseMode.MARKDOWN_V2
             )
             if message.message_id not in admin_messages:
@@ -209,7 +232,7 @@ async def process_photo_message(message: types.Message):
                                 await bot.edit_message_caption(
                                     chat_id=users_data[admin_username]['user_id'],
                                     message_id=admin_message_id,
-                                    caption=f"✅ОТВЕЧЕНО✅\n@{username}\n{original_caption}\n\nОтвет администратора:\n{reply_caption}"
+                                    caption=f"✅ОТВЕЧЕНО✅\n@{username}\nОбразовательная программа: {programs_dict[users_data[username]['program']]}\n{original_caption}\n\nОтвет администратора:\n{reply_caption}"
                                 )
                             del admin_messages[original_message_id]
                     else:
